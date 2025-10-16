@@ -1,0 +1,7 @@
+cocotb==2.0.1
+cocotb-bus==0.3.0
+cocotbext-axi==0.1.28
+find_libpython==0.5.1
+pycryptodome==3.23.0
+scapy==2.7.0
+verilator==5.38.0
