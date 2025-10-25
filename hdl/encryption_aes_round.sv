@@ -153,7 +153,7 @@ always_ff @(posedge clk) begin : sub_byte_metadata
   end
   else begin
     sub_byte_matrix_tvalid <= aes_in_tvalid & aes_in_tready;
-    sub_byte_matrix_tlast <= aes_in_tlast & aes_in_tready;
+    sub_byte_matrix_tlast <= aes_in_tlast & aes_in_tvalid & aes_in_tready;
   end
 end
 

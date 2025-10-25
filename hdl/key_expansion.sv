@@ -17,6 +17,7 @@ module key_expansion #(
 
 logic [31:0] w_reg[0:59];
 logic [31:0] temp_word;
+logic keys_valid_reg;
 logic keys_valid;
 logic aes_key_valid_pre;
 
@@ -25,7 +26,7 @@ logic [5:0] word_counter;
 int i;
 
 always_ff @(posedge clk) begin
-  if (keys_valid) begin
+  if (keys_valid_reg) begin
     round_keys_o <= '{
       {w_reg[56], w_reg[57], w_reg[58], w_reg[59]},
       {w_reg[52], w_reg[53], w_reg[54], w_reg[55]},
@@ -43,6 +44,10 @@ always_ff @(posedge clk) begin
       {w_reg[4], w_reg[5], w_reg[6], w_reg[7]},
       {w_reg[0], w_reg[1], w_reg[2], w_reg[3]}
     };
+    keys_valid <= 'd1;
+  end
+  else begin
+    keys_valid <= 'd0;
   end
 end
 assign round_keys_valid_o = keys_valid;
@@ -60,7 +65,7 @@ always_ff @(posedge clk ) begin
     for (i=0; i<8; i++) begin
       w_reg[i] <= 'd0;
     end
-    keys_valid <= 'd0;
+    keys_valid_reg <= 'd0;
     aes_key_valid_pre <= 'd0;
     word_counter <= 'd0;
     state <= IDLE_S;
@@ -83,32 +88,27 @@ always_ff @(posedge clk ) begin
       end
     end
 
-    EXPAND_S: begin
-      if(word_counter == 'd60)begin
-        word_counter <= 'd0;
-        state <= DONE_S;
-      end
-      else begin
-        if(word_counter % 8 == 0)begin
-          w_reg[word_counter] <= subWord(rotWord(w_reg[word_counter-1])) ^ round_constats[(word_counter/8)] ^ w_reg[word_counter-8];
-        end
-        else if (word_counter % 8 == 4)begin
-          w_reg[word_counter] <= subWord(w_reg[word_counter-1]) ^ w_reg[word_counter-8];
-        end
-        else begin
-          w_reg[word_counter] <= w_reg[word_counter-1] ^ w_reg[word_counter-8];
-        end
-        word_counter <= word_counter + 'd1;
-      end
+  EXPAND_S: begin
+    if (word_counter < 60) begin
+      case (word_counter % 8)
+        0: w_reg[word_counter] <= subWord(rotWord(w_reg[word_counter-1])) ^ round_constats[word_counter/8] ^ w_reg[word_counter-8];
+        4: w_reg[word_counter] <= subWord(w_reg[word_counter-1]) ^ w_reg[word_counter-8];
+        default: w_reg[word_counter] <= w_reg[word_counter-1] ^ w_reg[word_counter-8];
+      endcase
+      word_counter <= word_counter + 1;
+    end else begin
+      state <= DONE_S;
     end
+  end
+
 
     DONE_S : begin
       if(aes_key_valid_pre)begin
-        keys_valid <= 1'b1;
+        keys_valid_reg <= 1'b1;
         state <= DONE_S;
       end
       else begin
-        keys_valid <= 1'b0;
+        keys_valid_reg <= 1'b0;
         state <= IDLE_S;
       end
     end

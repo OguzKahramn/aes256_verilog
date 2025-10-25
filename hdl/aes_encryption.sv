@@ -12,7 +12,7 @@ module aes_encryption #(
   input  wire  aes_in_tlast,
   output wire  aes_in_tready,
 
-  input  round_keys_t round_keys,
+  input  wire round_keys_t round_keys,
   input  wire round_keys_valid,
 
   output logic [TDATA_WIDTH-1:0] aes_out_tdata,
@@ -43,7 +43,7 @@ module aes_encryption #(
     for(i = 0; i < ROUND_NUMBER; i++) begin : AES_ROUNDS
       encryption_aes_round #(
         .MIX_COLUMNS_EN(i<ROUND_NUMBER-1)
-      ) UUT_round(
+      ) enc_aes_round(
         .clk(clk),
         .resetn(resetn),
         .aes_in_tdata(stage_data[i]),
