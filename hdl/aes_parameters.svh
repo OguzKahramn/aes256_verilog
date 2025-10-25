@@ -8,6 +8,13 @@ parameter int AES_ROW = 4;
 
 typedef logic [7:0] aes_matrix_t [AES_ROW-1:0][AES_COLUMN-1:0];
 
+localparam aes_matrix_t MIX_COLUMN_MATRIX = '{
+  '{8'd2, 8'd3, 8'd1, 8'd1},
+  '{8'd1, 8'd2, 8'd3, 8'd1},
+  '{8'd1, 8'd1, 8'd2, 8'd3},
+  '{8'd3, 8'd1, 8'd1, 8'd2}
+};
+
 typedef logic [14:0][127:0] round_keys_t;
  
 logic [31:0] round_constats[10:0] = {'h36000000, 'h1b000000, 'h80000000, 'h40000000, 'h20000000,
@@ -16,6 +23,22 @@ logic [31:0] round_constats[10:0] = {'h36000000, 'h1b000000, 'h80000000, 'h40000
 
 function automatic logic [31:0] rotWord(input logic[31:0] word_in);
   rotWord = {word_in[23:0], word_in[31:24]};
+endfunction
+
+function automatic logic [7:0] gf_mult(input logic[7:0] a, input logic[7:0] b);
+  logic [7:0] temp_a;
+  logic [7:0] p;
+  p = 8'h00;
+  temp_a = a;
+
+  for(int i=0; i <8; i++)begin
+    if(b[i])
+      p ^= temp_a;
+    
+    temp_a = temp_a[7] ? (temp_a << 1 ^ 8'h1b) : (temp_a << 1);
+  end
+  
+  return p;
 endfunction
 
 function automatic logic [31:0] subWord(input logic[31:0] word_in);

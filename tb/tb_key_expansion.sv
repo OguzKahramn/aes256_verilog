@@ -37,7 +37,7 @@ initial begin
   #100
   aes_key_valid = 1'b0;
   #1000;
-  aes_key = 'haabbccddeeff102040aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+  aes_key = 'h603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4;
   aes_key_valid = 1'b1;
 end
 

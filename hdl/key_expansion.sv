@@ -76,10 +76,8 @@ always_ff @(posedge clk ) begin
         end
         word_counter <= 'd8;
         state <= EXPAND_S;
-        keys_valid <= 1'b0;
       end
       else begin
-        
         word_counter <= 'd0;
         state <= IDLE_S;
       end
@@ -105,8 +103,14 @@ always_ff @(posedge clk ) begin
     end
 
     DONE_S : begin
-      keys_valid <= 1'b1;
-      state <= IDLE_S;
+      if(aes_key_valid_pre)begin
+        keys_valid <= 1'b1;
+        state <= DONE_S;
+      end
+      else begin
+        keys_valid <= 1'b0;
+        state <= IDLE_S;
+      end
     end
     default: state <= IDLE_S;
     endcase
