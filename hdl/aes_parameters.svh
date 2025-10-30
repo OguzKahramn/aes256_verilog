@@ -15,6 +15,13 @@ localparam aes_matrix_t MIX_COLUMN_MATRIX = '{
   '{8'd3, 8'd1, 8'd1, 8'd2}
 };
 
+localparam aes_matrix_t IC_MIX_COLUMN_MATRIX = '{
+  '{8'he, 8'hb, 8'hd, 8'h9},
+  '{8'h9, 8'he, 8'hb, 8'hd},
+  '{8'hd, 8'h9, 8'he, 8'hb},
+  '{8'hb, 8'hd, 8'h9, 8'he}
+};
+
 typedef logic [14:0][127:0] round_keys_t;
  
 logic [31:0] round_constats[10:0] = {'h36000000, 'h1b000000, 'h80000000, 'h40000000, 'h20000000,
@@ -23,6 +30,26 @@ logic [31:0] round_constats[10:0] = {'h36000000, 'h1b000000, 'h80000000, 'h40000
 
 function automatic logic [31:0] rotWord(input logic[31:0] word_in);
   rotWord = {word_in[23:0], word_in[31:24]};
+endfunction
+
+function automatic logic [31:0] invMixColumns(input logic[31:0] word_in);
+  logic [7:0] a0 = word_in[31:24];
+  logic [7:0] a1 = word_in[23:16];
+  logic [7:0] a2 = word_in[15:8];
+  logic [7:0] a3 = word_in[7:0];
+  return {
+    gf_mult(a0,IC_MIX_COLUMN_MATRIX[3][3]) ^ gf_mult(a1,IC_MIX_COLUMN_MATRIX[3][2]) ^
+    gf_mult(a2,IC_MIX_COLUMN_MATRIX[3][1]) ^ gf_mult(a3,IC_MIX_COLUMN_MATRIX[3][0]),
+
+    gf_mult(a0,IC_MIX_COLUMN_MATRIX[2][3]) ^ gf_mult(a1,IC_MIX_COLUMN_MATRIX[2][2]) ^
+    gf_mult(a2,IC_MIX_COLUMN_MATRIX[2][1]) ^ gf_mult(a3,IC_MIX_COLUMN_MATRIX[2][0]),
+
+    gf_mult(a0,IC_MIX_COLUMN_MATRIX[1][3]) ^ gf_mult(a1,IC_MIX_COLUMN_MATRIX[1][2]) ^
+    gf_mult(a2,IC_MIX_COLUMN_MATRIX[1][1]) ^ gf_mult(a3,IC_MIX_COLUMN_MATRIX[1][0]),
+
+    gf_mult(a0,IC_MIX_COLUMN_MATRIX[0][3]) ^ gf_mult(a1,IC_MIX_COLUMN_MATRIX[0][2]) ^
+    gf_mult(a2,IC_MIX_COLUMN_MATRIX[0][1]) ^ gf_mult(a3,IC_MIX_COLUMN_MATRIX[0][0])
+  };
 endfunction
 
 function automatic logic [7:0] gf_mult(input logic[7:0] a, input logic[7:0] b);

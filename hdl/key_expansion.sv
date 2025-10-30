@@ -3,7 +3,9 @@
 `include "aes_parameters.svh"
 
 module key_expansion #(
-  parameter int KEY_WIDTH = 256
+  parameter int KEY_WIDTH = 256,
+  parameter int ENCRYPTION = 1,
+  parameter int MAX_ROUND_NUM = 14
 )(
   input  wire clk,
   input  wire resetn,
@@ -17,11 +19,19 @@ module key_expansion #(
 
 logic [31:0] w_reg[0:59];
 logic [31:0] temp_word;
+logic compute_done;
 logic keys_valid_reg;
 logic keys_valid;
 logic aes_key_valid_pre;
 
 logic [5:0] word_counter;
+logic [3:0] round_counter;
+logic [5:0] word_counter_index;
+
+logic [31:0] w_ic_buf[0:3];
+logic ic_valid;
+
+assign word_counter_index = round_counter << 2;
 
 int i;
 
@@ -55,6 +65,7 @@ assign round_keys_valid_o = keys_valid;
 typedef enum {
   IDLE_S,
   EXPAND_S,
+  EXPAND_IC_S,
   DONE_S
 } state_t;
 
@@ -64,10 +75,15 @@ always_ff @(posedge clk ) begin
   if (!resetn) begin
     for (i=0; i<8; i++) begin
       w_reg[i] <= 'd0;
+      w_ic_buf[i] <= 'd0;
     end
     keys_valid_reg <= 'd0;
     aes_key_valid_pre <= 'd0;
     word_counter <= 'd0;
+    round_counter <= 'd0;
+    ic_valid <= 'd0;
+    temp_word <= 'd0;
+    compute_done <= 'd0;
     state <= IDLE_S;
   end
   else begin
@@ -90,30 +106,66 @@ always_ff @(posedge clk ) begin
 
   EXPAND_S: begin
     if (word_counter < 60) begin
-      case (word_counter % 8)
-        0: w_reg[word_counter] <= subWord(rotWord(w_reg[word_counter-1])) ^ round_constats[word_counter/8] ^ w_reg[word_counter-8];
-        4: w_reg[word_counter] <= subWord(w_reg[word_counter-1]) ^ w_reg[word_counter-8];
-        default: w_reg[word_counter] <= w_reg[word_counter-1] ^ w_reg[word_counter-8];
-      endcase
-      word_counter <= word_counter + 1;
+      if(!compute_done)begin
+        case (word_counter % 8)
+        0: temp_word <= subWord(rotWord(w_reg[word_counter-1])) ^ round_constats[word_counter/8] ^ w_reg[word_counter-8];
+        4: temp_word <= subWord(w_reg[word_counter-1]) ^ w_reg[word_counter-8];
+        default: temp_word <= w_reg[word_counter-1] ^ w_reg[word_counter-8];
+        endcase
+        compute_done <= 'd1;
+      end
+      else begin
+        w_reg[word_counter] <= temp_word;
+        word_counter <= word_counter + 'd1;
+        compute_done <= 'd0;
+      end
     end else begin
-      state <= DONE_S;
-    end
-  end
-
-
-    DONE_S : begin
-      if(aes_key_valid_pre)begin
-        keys_valid_reg <= 1'b1;
+      if(ENCRYPTION)begin
         state <= DONE_S;
       end
       else begin
-        keys_valid_reg <= 1'b0;
-        state <= IDLE_S;
+        state <= EXPAND_IC_S;
+        round_counter <= 'd1;
       end
     end
-    default: state <= IDLE_S;
-    endcase
+  end
+
+  EXPAND_IC_S: begin
+    if(round_counter < MAX_ROUND_NUM)begin
+      state <= EXPAND_IC_S;
+      if(!ic_valid)begin
+        for (int j = 0; j < 4; j++) begin
+          w_ic_buf[j] <= invMixColumns(w_reg[word_counter_index + j]);
+        end
+        ic_valid <= 'd1;
+      end
+      else begin
+        for(int j=0; j < 4; j++)begin
+          w_reg[word_counter_index+j] <= w_ic_buf[j];
+        end
+        ic_valid <= 'd0;
+        round_counter <= round_counter + 'd1;
+      end
+    end
+    else begin
+      state <= DONE_S;
+      round_counter <= 'd1;
+    end
+  end
+
+  DONE_S : begin
+    if(aes_key_valid_pre)begin
+      keys_valid_reg <= 1'b1;
+      state <= DONE_S;
+    end
+    else begin
+      keys_valid_reg <= 1'b0;
+      state <= IDLE_S;
+    end
+  end
+
+  default: state <= IDLE_S;
+  endcase
   end
 end
 

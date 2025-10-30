@@ -11,6 +11,9 @@ logic aes_key_valid;
 round_keys_t round_keys;
 logic round_key_valid;
 
+round_keys_t ic_round_keys;
+logic ic_round_key_valid;
+
 key_expansion UUT(
   .clk(clk),
   .resetn(resetn),
@@ -20,6 +23,22 @@ key_expansion UUT(
 
   .round_keys_o(round_keys),
   .round_keys_valid_o(round_key_valid)
+);
+
+
+key_expansion #(
+  .KEY_WIDTH(256),
+  .ENCRYPTION(0),
+  .MAX_ROUND_NUM(14))
+  UUT_IC(
+  .clk(clk),
+  .resetn(resetn),
+
+  .aes_key_i(aes_key),
+  .aes_key_valid_i(aes_key_valid),
+
+  .round_keys_o(ic_round_keys),
+  .round_keys_valid_o(ic_round_key_valid)
 );
 
 
@@ -36,7 +55,7 @@ initial begin
   aes_key_valid = 1'b1;
   #100
   aes_key_valid = 1'b0;
-  #1000;
+  #2005;
   aes_key = 'h603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4;
   aes_key_valid = 1'b1;
 end
