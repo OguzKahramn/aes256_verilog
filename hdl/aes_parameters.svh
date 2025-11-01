@@ -462,7 +462,7 @@ function automatic logic [7:0] inv_s_box_f(input logic[7:0] byte_in);
     'h64: inv_s_box_f = 'h8c;
     'h65: inv_s_box_f = 'hbc;
     'h66: inv_s_box_f = 'hd3;
-    'h67: inv_s_box_f = 'ha0;
+    'h67: inv_s_box_f = 'h0a;
     'h68: inv_s_box_f = 'hf7;
     'h69: inv_s_box_f = 'he4;
     'h6a: inv_s_box_f = 'h58;
