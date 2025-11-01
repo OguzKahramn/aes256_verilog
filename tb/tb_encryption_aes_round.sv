@@ -1,6 +1,6 @@
 
 `include "aes_parameters.svh"
-module tb_aes_round();
+module tb_encryption_aes_round();
 
 
 logic clk;
