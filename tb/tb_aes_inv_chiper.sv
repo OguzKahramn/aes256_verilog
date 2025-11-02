@@ -1,6 +1,6 @@
 
 `include "aes_parameters.svh"
-module tb_ic_aes_round();
+module tb_aes_inv_chiper();
 
 
 logic clk;
@@ -14,20 +14,13 @@ logic round_key_valid;
 logic [127:0] aes_in_tdata;
 logic aes_in_tvalid;
 logic aes_in_tlast;
+logic aes_in_tready;
 
 logic [127:0] aes_out_tdata;
 logic aes_out_tvalid;
 logic aes_out_tlast;
 
-wire [127:0] stage_data   [0:14];
-wire         stage_valid  [0:14];
-wire         stage_last   [0:14];
-
-key_expansion #(
-  .KEY_WIDTH(256),
-  .ENCRYPTION(1),
-  .MAX_ROUND_NUM(14))
-  UUT(
+key_expansion UUT(
   .clk(clk),
   .resetn(resetn),
 
@@ -38,36 +31,25 @@ key_expansion #(
   .round_keys_valid_o(round_key_valid)
 );
 
-assign stage_data[14]  = aes_in_tdata;
-assign stage_valid[14] = aes_in_tvalid;
-assign stage_last[14]  = aes_in_tlast;
+aes_inv_chiper #(
+  .ROUND_NUMBER(14),
+  .TDATA_WIDTH(128)
+) UUT_inv_chiper(
+  .clk(clk),
+  .resetn(resetn),
+  .aes_in_tdata(aes_in_tdata),
+  .aes_in_tvalid(aes_in_tvalid),
+  .aes_in_tlast(aes_in_tlast),
+  .aes_in_tready(aes_in_tready),
 
-assign aes_out_tdata = stage_data[0] ^ round_keys[0];
-assign aes_out_tvalid = stage_valid[0];
-assign aes_out_tlast = stage_last[0];
+  .round_keys(round_keys),
+  .round_keys_valid(round_key_valid),
 
-genvar i;
-
-generate
-  for(i = 0; i < 14; i++) begin : IC_AES_ROUNDS
-    inverse_chiper_aes_round #(
-      .MIX_COLUMNS_EN(i>=1)
-    ) UUT_round(
-      .clk(clk),
-      .resetn(resetn),
-      .aes_in_tdata(stage_data[14-i]),
-      .aes_in_tvalid(stage_valid[14-i]),
-      .aes_in_tlast(stage_last[14-i]),
-      .aes_in_tready(),
-      .round_key(round_keys[14-i]),
-      .aes_out_tdata(stage_data[14-i-1]),
-      .aes_out_tvalid(stage_valid[14-i-1]),
-      .aes_out_tlast(stage_last[14-i-1]),
-      .aes_out_tready('d1)
-    );
-  end
-
-endgenerate
+  .aes_out_tdata(aes_out_tdata),
+  .aes_out_tvalid(aes_out_tvalid),
+  .aes_out_tlast(aes_out_tlast),
+  .aes_out_tready('d1)
+);
 
 always #5 clk = ~ clk;
 
@@ -92,12 +74,11 @@ initial begin
   aes_in_tdata = 'hB6ED21B99CA6F4F9F153E7B1BEAFED1D;
   #10;
   aes_in_tdata = 'h23304B7A39F9F3FF067D8D8F9E24ECC7;
-  #10;
-  aes_in_tdata = 'h229efb94bf5d6b1d0c48b7b7f64f1009;
   aes_in_tlast = 'h1;
   #10;
   aes_in_tlast = 'h0;
   aes_in_tvalid = 'h0;
+
 end
 
 endmodule
