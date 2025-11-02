@@ -408,7 +408,7 @@ function automatic logic [7:0] inv_s_box_f(input logic[7:0] byte_in);
     'h31: inv_s_box_f = 'h2e;
     'h32: inv_s_box_f = 'ha1;
     'h33: inv_s_box_f = 'h66;
-    'h34: inv_s_box_f = 'h38;
+    'h34: inv_s_box_f = 'h28;
     'h35: inv_s_box_f = 'hd9;
     'h36: inv_s_box_f = 'h24;
     'h37: inv_s_box_f = 'hb2;

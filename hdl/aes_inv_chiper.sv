@@ -32,7 +32,7 @@ module aes_inv_chiper #(
   assign stage_last[ROUND_NUMBER]  = aes_in_tlast;
   assign aes_in_tready = round_keys_valid & stage_ready[ROUND_NUMBER];
 
-  assign aes_out_tdata = stage_data[0];
+  assign aes_out_tdata = stage_data[0] ^ round_keys[0];
   assign aes_out_tvalid = stage_valid[0];
   assign aes_out_tlast = stage_last[0];
   assign stage_ready[0] = aes_out_tready;
@@ -50,7 +50,7 @@ module aes_inv_chiper #(
         .aes_in_tvalid(stage_valid[ROUND_NUMBER-i]),
         .aes_in_tlast(stage_last[ROUND_NUMBER-i]),
         .aes_in_tready(stage_ready[ROUND_NUMBER-i]),
-        .round_key(round_keys[ROUND_NUMBER-i-1]),
+        .round_key(round_keys[ROUND_NUMBER-i]),
         .aes_out_tdata(stage_data[ROUND_NUMBER-i-1]),
         .aes_out_tvalid(stage_valid[ROUND_NUMBER-i-1]),
         .aes_out_tlast(stage_last[ROUND_NUMBER-i-1]),
