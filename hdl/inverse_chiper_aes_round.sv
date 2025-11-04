@@ -22,17 +22,22 @@ logic [127:0] inv_shift_rows_data;
 aes_matrix_t inv_sub_bytes_matrix;
 aes_matrix_t add_round_key_matrix;
 aes_matrix_t inv_mix_column_matrix;
+logic inv_sub_byte_ready;
 logic inv_sub_bytes_valid;
 logic inv_sub_bytes_last;
+logic inv_mix_columns_ready;
 logic inv_mix_columns_valid;
 logic inv_mix_columns_last;
+
 logic add_round_key_valid;
 logic add_round_key_last;
 
 int i,j;
 
 assign aes_out_tdata = inv_shift_rows_data;
-assign aes_in_tready = aes_out_tready;
+assign aes_in_tready = inv_mix_columns_ready;
+assign inv_mix_columns_ready = inv_sub_byte_ready;
+assign inv_sub_byte_ready = aes_out_tready;
 
 
 always_ff @(posedge clk) begin : add_round_key
@@ -65,12 +70,14 @@ generate
         end
       end
       else begin
-        for(i=0; i<AES_ROW; i++)begin
-          for(j=0; j<AES_COLUMN; j++)begin
-            inv_mix_column_matrix[i][j] <= gf_mult(add_round_key_matrix[0][j], IC_MIX_COLUMN_MATRIX[i][0]) ^
-                                           gf_mult(add_round_key_matrix[1][j], IC_MIX_COLUMN_MATRIX[i][1]) ^
-                                           gf_mult(add_round_key_matrix[2][j], IC_MIX_COLUMN_MATRIX[i][2]) ^
-                                           gf_mult(add_round_key_matrix[3][j], IC_MIX_COLUMN_MATRIX[i][3]);
+        if(add_round_key_valid & inv_mix_columns_ready)begin
+          for(i=0; i<AES_ROW; i++)begin
+            for(j=0; j<AES_COLUMN; j++)begin
+              inv_mix_column_matrix[i][j] <= gf_mult(add_round_key_matrix[0][j], IC_MIX_COLUMN_MATRIX[i][0]) ^
+                                             gf_mult(add_round_key_matrix[1][j], IC_MIX_COLUMN_MATRIX[i][1]) ^
+                                             gf_mult(add_round_key_matrix[2][j], IC_MIX_COLUMN_MATRIX[i][2]) ^
+                                             gf_mult(add_round_key_matrix[3][j], IC_MIX_COLUMN_MATRIX[i][3]);
+            end
           end
         end
       end
@@ -86,9 +93,11 @@ generate
         end
       end
       else begin
-        for(i=0; i<AES_ROW; i++)begin
-          for(j=0; j<AES_COLUMN; j++)begin
-            inv_mix_column_matrix[i][j] <= add_round_key_matrix[i][j];
+        if(add_round_key_valid & inv_mix_columns_ready)begin
+          for(i=0; i<AES_ROW; i++)begin
+            for(j=0; j<AES_COLUMN; j++)begin
+              inv_mix_column_matrix[i][j] <= add_round_key_matrix[i][j];
+            end
           end
         end
       end
@@ -106,9 +115,11 @@ always_ff @(posedge clk) begin : inv_sub_byte
     end
   end
   else begin
-    for(i=0; i<AES_ROW; i++)begin
-      for(j=0; j<AES_COLUMN; j++)begin
-        inv_sub_bytes_matrix[i][j] <= inv_s_box_f(inv_mix_column_matrix[i][j]);
+    if(inv_mix_columns_valid & inv_sub_byte_ready)begin
+      for(i=0; i<AES_ROW; i++)begin
+        for(j=0; j<AES_COLUMN; j++)begin
+          inv_sub_bytes_matrix[i][j] <= inv_s_box_f(inv_mix_column_matrix[i][j]);
+        end
       end
     end
   end
@@ -119,25 +130,27 @@ always_ff @(posedge clk) begin : inv_shift_rows
     inv_shift_rows_data <= 'd0;
   end
   else begin
-    inv_shift_rows_data[7:0]     <= inv_sub_bytes_matrix[0][3];
-    inv_shift_rows_data[15:8]    <= inv_sub_bytes_matrix[1][2];
-    inv_shift_rows_data[23:16]   <= inv_sub_bytes_matrix[2][1];
-    inv_shift_rows_data[31:24]   <= inv_sub_bytes_matrix[3][0];
+    if(inv_sub_bytes_valid & aes_out_tready)begin
+      inv_shift_rows_data[7:0]     <= inv_sub_bytes_matrix[0][3];
+      inv_shift_rows_data[15:8]    <= inv_sub_bytes_matrix[1][2];
+      inv_shift_rows_data[23:16]   <= inv_sub_bytes_matrix[2][1];
+      inv_shift_rows_data[31:24]   <= inv_sub_bytes_matrix[3][0];
 
-    inv_shift_rows_data[39:32]   <= inv_sub_bytes_matrix[0][0];
-    inv_shift_rows_data[47:40]   <= inv_sub_bytes_matrix[1][3];
-    inv_shift_rows_data[55:48]   <= inv_sub_bytes_matrix[2][2];
-    inv_shift_rows_data[63:56]   <= inv_sub_bytes_matrix[3][1];
+      inv_shift_rows_data[39:32]   <= inv_sub_bytes_matrix[0][0];
+      inv_shift_rows_data[47:40]   <= inv_sub_bytes_matrix[1][3];
+      inv_shift_rows_data[55:48]   <= inv_sub_bytes_matrix[2][2];
+      inv_shift_rows_data[63:56]   <= inv_sub_bytes_matrix[3][1];
 
-    inv_shift_rows_data[71:64]   <= inv_sub_bytes_matrix[0][1];
-    inv_shift_rows_data[79:72]   <= inv_sub_bytes_matrix[1][0];
-    inv_shift_rows_data[87:80]   <= inv_sub_bytes_matrix[2][3];
-    inv_shift_rows_data[95:88]   <= inv_sub_bytes_matrix[3][2];
+      inv_shift_rows_data[71:64]   <= inv_sub_bytes_matrix[0][1];
+      inv_shift_rows_data[79:72]   <= inv_sub_bytes_matrix[1][0];
+      inv_shift_rows_data[87:80]   <= inv_sub_bytes_matrix[2][3];
+      inv_shift_rows_data[95:88]   <= inv_sub_bytes_matrix[3][2];
 
-    inv_shift_rows_data[103:96]  <= inv_sub_bytes_matrix[0][2];
-    inv_shift_rows_data[111:104] <= inv_sub_bytes_matrix[1][1];
-    inv_shift_rows_data[119:112] <= inv_sub_bytes_matrix[2][0];
-    inv_shift_rows_data[127:120] <= inv_sub_bytes_matrix[3][3];
+      inv_shift_rows_data[103:96]  <= inv_sub_bytes_matrix[0][2];
+      inv_shift_rows_data[111:104] <= inv_sub_bytes_matrix[1][1];
+      inv_shift_rows_data[119:112] <= inv_sub_bytes_matrix[2][0];
+      inv_shift_rows_data[127:120] <= inv_sub_bytes_matrix[3][3];
+    end
   end
 end : inv_shift_rows
 
@@ -159,8 +172,14 @@ always_ff @(posedge clk) begin : inv_mix_columns_metadata
     inv_mix_columns_last <= 'd0;
   end
   else begin
-    inv_mix_columns_valid <= add_round_key_valid;
-    inv_mix_columns_last <= add_round_key_last;
+    if(add_round_key_valid & inv_mix_columns_ready) begin
+      inv_mix_columns_valid <= add_round_key_valid;
+      inv_mix_columns_last <= add_round_key_last;
+    end
+    else begin
+      inv_mix_columns_valid <= 'd0;
+      inv_mix_columns_last <= 'd0;
+    end
   end
 end
 
@@ -170,8 +189,14 @@ always_ff @(posedge clk) begin : inv_sub_bytes_metada
     inv_sub_bytes_last <= 'd0;
   end
   else begin
-    inv_sub_bytes_valid <= inv_mix_columns_valid;
-    inv_sub_bytes_last <= inv_mix_columns_last;
+    if(inv_mix_columns_valid & inv_sub_byte_ready)begin
+      inv_sub_bytes_valid <= inv_mix_columns_valid;
+      inv_sub_bytes_last <= inv_mix_columns_last;
+    end
+    else begin
+      inv_sub_bytes_valid <= 'd0;
+      inv_sub_bytes_last <= 'd0;
+    end
   end
 end
 
@@ -181,8 +206,14 @@ always_ff @(posedge clk) begin : inv_shift_rows_metada
     aes_out_tlast <= 'd0;
   end
   else begin
-    aes_out_tvalid <= inv_sub_bytes_valid;
-    aes_out_tlast <= inv_sub_bytes_last;
+    if(inv_sub_bytes_valid & aes_out_tready)begin
+      aes_out_tvalid <= inv_sub_bytes_valid;
+      aes_out_tlast <= inv_sub_bytes_last;
+    end
+    else begin
+      aes_out_tvalid <= 'd0;
+      aes_out_tlast <= 'd0;
+    end
   end
 end
 

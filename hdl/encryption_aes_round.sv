@@ -24,19 +24,25 @@ aes_matrix_t mix_columns_matrix;
 
 logic sub_byte_matrix_tvalid;
 logic sub_byte_matrix_tlast;
+logic sub_byte_tready;
 
 logic shift_rows_matrix_tvalid;
 logic shift_rows_matrix_tlast;
+logic shift_rows_tready;
 
 logic mix_columns_matrix_tvalid;
 logic mix_columns_matrix_tlast;
+logic mix_columns_tready;
 
 logic [127:0] add_round_key_data;
 
 int i,j;
 
 assign aes_out_tdata = add_round_key_data;
-assign aes_in_tready = aes_out_tready;
+assign aes_in_tready = sub_byte_tready;
+assign sub_byte_tready = shift_rows_tready;
+assign shift_rows_tready = mix_columns_tready;
+assign mix_columns_tready = aes_out_tready;
 
 always_ff @(posedge clk) begin : sub_byte
   if(!resetn)begin
@@ -66,25 +72,27 @@ always_ff @(posedge clk) begin : shift_rows
     end
   end
   else begin
-    shift_rows_matrix[3][0] <= sub_byte_matrix[3][0];
-    shift_rows_matrix[3][1] <= sub_byte_matrix[3][1];
-    shift_rows_matrix[3][2] <= sub_byte_matrix[3][2];
-    shift_rows_matrix[3][3] <= sub_byte_matrix[3][3];
+    if(sub_byte_matrix_tvalid & shift_rows_tready)begin
+      shift_rows_matrix[3][0] <= sub_byte_matrix[3][0];
+      shift_rows_matrix[3][1] <= sub_byte_matrix[3][1];
+      shift_rows_matrix[3][2] <= sub_byte_matrix[3][2];
+      shift_rows_matrix[3][3] <= sub_byte_matrix[3][3];
 
-    shift_rows_matrix[2][0] <= sub_byte_matrix[2][3];
-    shift_rows_matrix[2][1] <= sub_byte_matrix[2][0];
-    shift_rows_matrix[2][2] <= sub_byte_matrix[2][1];
-    shift_rows_matrix[2][3] <= sub_byte_matrix[2][2];
+      shift_rows_matrix[2][0] <= sub_byte_matrix[2][3];
+      shift_rows_matrix[2][1] <= sub_byte_matrix[2][0];
+      shift_rows_matrix[2][2] <= sub_byte_matrix[2][1];
+      shift_rows_matrix[2][3] <= sub_byte_matrix[2][2];
 
-    shift_rows_matrix[1][0] <= sub_byte_matrix[1][2];
-    shift_rows_matrix[1][1] <= sub_byte_matrix[1][3];
-    shift_rows_matrix[1][2] <= sub_byte_matrix[1][0];
-    shift_rows_matrix[1][3] <= sub_byte_matrix[1][1];
+      shift_rows_matrix[1][0] <= sub_byte_matrix[1][2];
+      shift_rows_matrix[1][1] <= sub_byte_matrix[1][3];
+      shift_rows_matrix[1][2] <= sub_byte_matrix[1][0];
+      shift_rows_matrix[1][3] <= sub_byte_matrix[1][1];
 
-    shift_rows_matrix[0][0] <= sub_byte_matrix[0][1];
-    shift_rows_matrix[0][1] <= sub_byte_matrix[0][2];
-    shift_rows_matrix[0][2] <= sub_byte_matrix[0][3];
-    shift_rows_matrix[0][3] <= sub_byte_matrix[0][0];
+      shift_rows_matrix[0][0] <= sub_byte_matrix[0][1];
+      shift_rows_matrix[0][1] <= sub_byte_matrix[0][2];
+      shift_rows_matrix[0][2] <= sub_byte_matrix[0][3];
+      shift_rows_matrix[0][3] <= sub_byte_matrix[0][0];
+    end
   end
 end : shift_rows
 
@@ -99,12 +107,14 @@ generate
         end
       end
       else begin
-        for(i=0; i<AES_ROW; i++)begin
-          for(j=0; j<AES_COLUMN; j++)begin
-            mix_columns_matrix[i][j] <= gf_mult (shift_rows_matrix[0][j], MIX_COLUMN_MATRIX[i][0]) ^
-                                        gf_mult (shift_rows_matrix[1][j], MIX_COLUMN_MATRIX[i][1]) ^
-                                        gf_mult (shift_rows_matrix[2][j], MIX_COLUMN_MATRIX[i][2]) ^
-                                        gf_mult (shift_rows_matrix[3][j], MIX_COLUMN_MATRIX[i][3]);
+        if(shift_rows_matrix_tvalid & mix_columns_tready)begin
+          for(i=0; i<AES_ROW; i++)begin
+            for(j=0; j<AES_COLUMN; j++)begin
+              mix_columns_matrix[i][j] <= gf_mult (shift_rows_matrix[0][j], MIX_COLUMN_MATRIX[i][0]) ^
+                                          gf_mult (shift_rows_matrix[1][j], MIX_COLUMN_MATRIX[i][1]) ^
+                                          gf_mult (shift_rows_matrix[2][j], MIX_COLUMN_MATRIX[i][2]) ^
+                                          gf_mult (shift_rows_matrix[3][j], MIX_COLUMN_MATRIX[i][3]);
+            end
           end
         end
       end
@@ -120,9 +130,11 @@ generate
         end
       end
       else begin
-        for(i=0; i<AES_ROW; i++)begin
-          for(j=0; j<AES_COLUMN; j++)begin
-            mix_columns_matrix[i][j] <= shift_rows_matrix[i][j];
+        if(shift_rows_matrix_tvalid & mix_columns_tready)begin
+          for(i=0; i<AES_ROW; i++)begin
+            for(j=0; j<AES_COLUMN; j++)begin
+              mix_columns_matrix[i][j] <= shift_rows_matrix[i][j];
+            end
           end
         end
       end
@@ -136,9 +148,11 @@ always_ff @(posedge clk) begin : add_round_key
     add_round_key_data <= 'd0;
   end
   else begin
-    for(i=0; i<AES_ROW; i++)begin
-      for(j=0; j<AES_COLUMN; j++)begin
-        add_round_key_data[8*(j*4+i)+:8] <=  mix_columns_matrix[i][j] ^ round_key[8*(j*4+i)+:8];
+    if(mix_columns_matrix_tvalid & aes_out_tready)begin
+      for(i=0; i<AES_ROW; i++)begin
+        for(j=0; j<AES_COLUMN; j++)begin
+          add_round_key_data[8*(j*4+i)+:8] <=  mix_columns_matrix[i][j] ^ round_key[8*(j*4+i)+:8];
+        end
       end
     end
   end
@@ -161,8 +175,14 @@ always_ff @(posedge clk) begin : shift_rows_metadata
     shift_rows_matrix_tlast <= 'd0;
   end
   else begin
-    shift_rows_matrix_tvalid <= sub_byte_matrix_tvalid;
-    shift_rows_matrix_tlast <= sub_byte_matrix_tlast;
+    if(sub_byte_matrix_tvalid & shift_rows_tready)begin
+      shift_rows_matrix_tvalid <= sub_byte_matrix_tvalid;
+      shift_rows_matrix_tlast <= sub_byte_matrix_tlast;
+    end
+    else begin
+      shift_rows_matrix_tvalid <= 'd0;
+      shift_rows_matrix_tlast <= 'd0;
+    end
   end
 end
 
@@ -172,8 +192,14 @@ always_ff @(posedge clk) begin : mix_columns_metadata
     mix_columns_matrix_tlast <= 'd0;
   end
   else begin
-    mix_columns_matrix_tvalid <= shift_rows_matrix_tvalid;
-    mix_columns_matrix_tlast <= shift_rows_matrix_tlast;
+    if(shift_rows_matrix_tvalid & mix_columns_tready)begin
+      mix_columns_matrix_tvalid <= shift_rows_matrix_tvalid;
+      mix_columns_matrix_tlast <= shift_rows_matrix_tlast;
+    end
+    else begin
+      mix_columns_matrix_tvalid <= 'd0;
+      mix_columns_matrix_tlast <= 'd0;
+    end
   end
 end
 
@@ -183,8 +209,14 @@ always_ff @(posedge clk) begin : round_keys_metadata
     aes_out_tlast <= 'd0;
   end
   else begin
-    aes_out_tvalid <= mix_columns_matrix_tvalid;
-    aes_out_tlast <= mix_columns_matrix_tlast;
+    if(mix_columns_matrix_tvalid & aes_out_tready)begin
+      aes_out_tvalid <= mix_columns_matrix_tvalid;
+      aes_out_tlast <= mix_columns_matrix_tlast;
+    end
+    else begin
+      aes_out_tvalid <= 'd0;
+      aes_out_tlast <= 'd0;
+    end
   end
 end
 endmodule
