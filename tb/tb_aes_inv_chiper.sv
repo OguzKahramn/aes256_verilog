@@ -19,6 +19,7 @@ logic aes_in_tready;
 logic [127:0] aes_out_tdata;
 logic aes_out_tvalid;
 logic aes_out_tlast;
+logic aes_out_tready;
 
 key_expansion UUT(
   .clk(clk),
@@ -48,7 +49,7 @@ aes_inv_chiper #(
   .aes_out_tdata(aes_out_tdata),
   .aes_out_tvalid(aes_out_tvalid),
   .aes_out_tlast(aes_out_tlast),
-  .aes_out_tready('d1)
+  .aes_out_tready(aes_out_tready)
 );
 
 always #5 clk = ~ clk;
@@ -60,6 +61,7 @@ initial begin
   aes_in_tdata = 0;
   aes_in_tvalid = 0;
   aes_in_tlast  = 0;
+  aes_out_tready = 1;
   #100;
   resetn= 1;
   #100;
@@ -68,12 +70,17 @@ initial begin
   #2005;
   aes_in_tdata = 'hF3EED1BDB5D2A03C064B5A7E3DB181F8;
   aes_in_tvalid = 1;
+  aes_out_tready = 0;
   #10;
   aes_in_tdata = 'h591CCB10D410ED26DC5BA74A31362870;
+    aes_in_tvalid = 1;
+  aes_out_tready = 1;
   #10;
   aes_in_tdata = 'hB6ED21B99CA6F4F9F153E7B1BEAFED1D;
+  aes_in_tvalid = 0;
   #10;
   aes_in_tdata = 'h23304B7A39F9F3FF067D8D8F9E24ECC7;
+  aes_in_tvalid = 1;
   aes_in_tlast = 'h1;
   #10;
   aes_in_tlast = 'h0;
