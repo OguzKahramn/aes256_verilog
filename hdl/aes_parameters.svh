@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Oguz Kahraman
+//
+// SPDX-License-Identifier: MIT
 
 `ifndef _aes_parameters_svh_
 

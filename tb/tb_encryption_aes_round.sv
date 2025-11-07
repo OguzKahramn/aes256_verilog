@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Oguz Kahraman
+//
+// SPDX-License-Identifier: MIT
 
 `include "aes_parameters.svh"
 module tb_encryption_aes_round();

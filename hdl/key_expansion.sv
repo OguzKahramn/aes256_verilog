@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 Oguz Kahraman
+//
+// SPDX-License-Identifier: MIT
+
 `default_nettype none
 
 `include "aes_parameters.svh"
